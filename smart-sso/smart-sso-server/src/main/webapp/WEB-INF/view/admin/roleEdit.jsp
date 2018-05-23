@@ -2,12 +2,12 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <jsp:include page="../common/common.jsp">
-	<jsp:param name="title" value="管理员"/>
+	<jsp:param name="title" value="用户"/>
 </jsp:include>
 
 <div class="page-header">
 	<h1>
-		${empty user.id ? '添加' : '修改'}角色
+		${empty role.id ? '添加' : '修改'}角色
 	</h1>
 </div>
 
@@ -17,19 +17,6 @@
 		<form id="_editForm" class="form-horizontal" role="form" 
 			validate="true">
 			<input type="hidden" name="id" value="${role.id}">
-			
-			<div class="form-group">
-				<label for="_appId" class="col-sm-3 control-label no-padding-right"><span class="form-star">*</span>应用</label>
-
-				<div class="col-sm-3">
-					<select id="_appId" name="appId" class="form-control help-validate"
-						required="true">
-						<c:forEach var="item" items="${appList}">
-							<option value="${item.id}" ${(item.id eq role.appId)?'selected="selected"':''}>${item.name}</option>
-						</c:forEach>
-					</select>
-				</div>
-			</div> 
 			
 			<div class="form-group">
 				<label for="_name" class="col-sm-3 control-label no-padding-right"><span class="form-star">*</span>名称</label>

@@ -5,8 +5,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import javax.annotation.Resource;
 
-import com.smart.mvc.cache.RedisCache;
-
 /**
  * 分布式环境令牌管理
  * 
@@ -24,7 +22,7 @@ public class RedisTokenManager extends TokenManager {
 
 	@Override
 	public void addToken(String token, LoginUser loginUser) {
-		redisCache.set(token, loginUser, tokenTimeout * 1000);
+		redisCache.set(token, loginUser, tokenTimeout);
 	}
 
 	@Override

@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
-import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -14,7 +14,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.util.StringUtils;
 
-import com.smart.mvc.exception.ServiceException;
 import com.smart.sso.rpc.RpcPermission;
 
 /**
@@ -24,22 +23,30 @@ import com.smart.sso.rpc.RpcPermission;
  */
 public class PermissionFilter extends ClientFilter {
 
+	// 当前应用关联权限系统的应用编码
+	private String ssoAppCode;
+	
+	// 存储已获取最新权限的token集合，当权限发生变动时清空
+	private static Set<String> sessionPermissionCache = new CopyOnWriteArraySet<String>();
+
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		super.init(filterConfig);
-		ApplicationPermissionUtils.initApplicationPermissions(authenticationRpcService, ssoAppCode);
+		if (StringUtils.isEmpty(ssoAppCode)) {
+			throw new IllegalArgumentException("ssoAppCode不能为空");
+		}
+		ApplicationPermission.initApplicationPermissions(authenticationRpcService, ssoAppCode);
 	}
 
 	@Override
-	public void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-			throws IOException, ServletException {
+	public boolean isAccessAllowed(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		String path = request.getServletPath();
 		if (isPermitted(request, path))
-			chain.doFilter(request, response);
-		else if (!ApplicationPermissionUtils.getApplicationPermissionSet().contains(path))
-			chain.doFilter(request, response);
+			return true;
+		else if (!ApplicationPermission.getApplicationPermissionSet().contains(path))
+			return true;
 		else {
-			throw new ServiceException(SsoResultCode.SSO_PERMISSION_ERROR, "没有访问权限");
+			responseJson(response, SsoResultCode.SSO_PERMISSION_ERROR, "没有访问权限");
+			return false;
 		}
 	}
 
@@ -50,15 +57,11 @@ public class PermissionFilter extends ClientFilter {
 
 	private Set<String> getLocalPermissionSet(HttpServletRequest request) {
 		SessionPermission sessionPermission = SessionUtils.getSessionPermission(request);
-		if (sessionPermission == null || sessionPermissionChanged(request)) {
-			sessionPermission = invokePermissionInSession(request);
+		String token = SessionUtils.getSessionUser(request).getToken();
+		if (sessionPermission == null || !sessionPermissionCache.contains(token)) {
+			sessionPermission = invokePermissionInSession(request, token);
 		}
 		return sessionPermission.getPermissionSet();
-	}
-
-	private boolean sessionPermissionChanged(HttpServletRequest request) {
-		SessionUser user = SessionUtils.getSessionUser(request);
-		return PermissionJmsMonitor.isChanged && !PermissionJmsMonitor.tokenSet.contains(user.getToken());
 	}
 
 	/**
@@ -67,9 +70,8 @@ public class PermissionFilter extends ClientFilter {
 	 * @param token
 	 * @return
 	 */
-	public SessionPermission invokePermissionInSession(HttpServletRequest request) {
-		SessionUser user = SessionUtils.getSessionUser(request);
-		List<RpcPermission> dbList = authenticationRpcService.findPermissionList(user.getToken(), ssoAppCode);
+	public SessionPermission invokePermissionInSession(HttpServletRequest request, String token) {
+		List<RpcPermission> dbList = authenticationRpcService.findPermissionList(token, ssoAppCode);
 
 		List<RpcPermission> menuList = new ArrayList<RpcPermission>();
 		Set<String> operateSet = new HashSet<String>();
@@ -87,7 +89,7 @@ public class PermissionFilter extends ClientFilter {
 		sessionPermission.setMenuList(menuList);
 
 		// 保存登录用户没有权限的URL，方便前端去隐藏相应操作按钮
-		Set<String> noPermissionSet = new HashSet<String>(ApplicationPermissionUtils.getApplicationPermissionSet());
+		Set<String> noPermissionSet = new HashSet<String>(ApplicationPermission.getApplicationPermissionSet());
 		noPermissionSet.removeAll(operateSet);
 
 		sessionPermission.setNoPermissions(StringUtils.arrayToDelimitedString(noPermissionSet.toArray(), ","));
@@ -97,9 +99,15 @@ public class PermissionFilter extends ClientFilter {
 		SessionUtils.setSessionPermission(request, sessionPermission);
 
 		// 添加权限监控集合，当前session已更新最新权限
-		if (PermissionJmsMonitor.isChanged) {
-			PermissionJmsMonitor.tokenSet.add(user.getToken());
-		}
+		sessionPermissionCache.add(token);
 		return sessionPermission;
+	}
+
+	public void setSsoAppCode(String ssoAppCode) {
+		this.ssoAppCode = ssoAppCode;
+	}
+	
+	public static void invalidateSessionPermissions() {
+		sessionPermissionCache.clear();
 	}
 }

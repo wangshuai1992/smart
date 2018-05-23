@@ -1,6 +1,7 @@
 package com.smart.sso.server.service.impl;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.annotation.Resource;
@@ -8,6 +9,7 @@ import javax.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import com.smart.mvc.service.mybatis.impl.ServiceImpl;
 import com.smart.sso.server.dao.RolePermissionDao;
@@ -33,11 +35,21 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
 	}
 
 	@Transactional
-	public void allocate(Integer roleId, List<RolePermission> list) {
-		dao.deleteByRoleIds(Arrays.asList(roleId));
-		super.save(list);
+	public void allocate(Integer appId, Integer roleId, List<Integer> permissionIdList) {
+		dao.deleteByAppAndRoleId(appId, roleId);
+
+		List<RolePermission> list = new ArrayList<RolePermission>();
+		Integer permissionId;
+		for (Iterator<Integer> i$ = permissionIdList.iterator(); i$.hasNext(); list
+				.add(new RolePermission(appId, roleId, permissionId))) {
+			permissionId = i$.next();
+		}
+		if (!CollectionUtils.isEmpty(list)) {
+			super.save(list);
+		}
+
 		// JMS通知权限变更
-		permissionJmsService.send(appService.get(roleService.get(roleId).getAppId()).getCode());
+		permissionJmsService.send(appService.get(appId).getCode());
 	}
 
 	public List<RolePermission> findByRoleId(Integer roleId) {

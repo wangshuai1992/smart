@@ -2,12 +2,9 @@ package com.smart.sso.client;
 
 import java.io.IOException;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.smart.mvc.exception.ServiceException;
 import com.smart.sso.rpc.RpcUser;
 
 /**
@@ -21,23 +18,24 @@ public class SsoFilter extends ClientFilter {
 	public static final String SSO_TOKEN_NAME = "__vt_param__";
 
 	@Override
-	public void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-			throws IOException, ServletException {
+	public boolean isAccessAllowed(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		String token = getLocalToken(request);
 		if (token == null) {
-			if (getParameterToken(request) != null) {
+			token = request.getParameter(SSO_TOKEN_NAME);
+			if (token != null) {
+				invokeAuthInfoInSession(request, token);
 				// 再跳转一次当前URL，以便去掉URL中token参数
 				response.sendRedirect(request.getRequestURL().toString());
+				return false;
 			}
-			else
-				redirectLogin(request, response);
 		}
-		else if (isLogined(token))
-			chain.doFilter(request, response);
-		else
-			redirectLogin(request, response);
+		else if (authenticationRpcService.validate(token)) {// 验证token是否有效
+			return true;
+		}
+		redirectLogin(request, response);
+		return false;
 	}
-
+	
 	/**
 	 * 获取Session中token
 	 * 
@@ -49,23 +47,19 @@ public class SsoFilter extends ClientFilter {
 		return sessionUser == null ? null : sessionUser.getToken();
 	}
 
+
 	/**
-	 * 获取服务端回传token参数且验证
+	 * 存储sessionUser
 	 * 
 	 * @param request
 	 * @return
 	 * @throws IOException
 	 */
-	private String getParameterToken(HttpServletRequest request) throws IOException {
-		String token = request.getParameter(SSO_TOKEN_NAME);
-		if (token != null) {
-			RpcUser rpcUser = authenticationRpcService.findAuthInfo(token);
-			if (rpcUser != null) {
-				invokeAuthenticationInfoInSession(request, token, rpcUser.getAccount());
-				return token;
-			}
+	private void invokeAuthInfoInSession(HttpServletRequest request, String token) throws IOException {
+		RpcUser rpcUser = authenticationRpcService.findAuthInfo(token);
+		if (rpcUser != null) {
+			SessionUtils.setSessionUser(request, new SessionUser(token, rpcUser.getAccount()));
 		}
-		return null;
 	}
 
 	/**
@@ -77,46 +71,14 @@ public class SsoFilter extends ClientFilter {
 	 */
 	private void redirectLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		if (isAjaxRequest(request)) {
-			throw new ServiceException(SsoResultCode.SSO_TOKEN_ERROR, "未登录或已超时");
+			responseJson(response, SsoResultCode.SSO_TOKEN_ERROR, "未登录或已超时");
 		}
 		else {
 			SessionUtils.invalidate(request);
-			String ssoLoginUrl = new StringBuilder().append(ssoServerUrl).append("/login?backUrl=")
-					.append(request.getRequestURL()).append("&appCode=").append(ssoAppCode).toString();
+			String ssoLoginUrl = new StringBuilder().append(isServer ? request.getContextPath() : ssoServerUrl)
+					.append("/login?backUrl=").append(request.getRequestURL()).toString();
 
 			response.sendRedirect(ssoLoginUrl);
 		}
-	}
-
-	/**
-	 * 保存认证信息到Session
-	 * 
-	 * @param token
-	 * @param account
-	 * @param profile
-	 */
-	private void invokeAuthenticationInfoInSession(HttpServletRequest request, String token, String account) {
-		SessionUtils.setSessionUser(request, new SessionUser(token, account));
-	}
-
-	/**
-	 * 是否已登录
-	 * 
-	 * @param token
-	 * @return
-	 */
-	private boolean isLogined(String token) {
-		return authenticationRpcService.validate(token);
-	}
-
-	/**
-	 * 是否Ajax请求
-	 * 
-	 * @param request
-	 * @return
-	 */
-	private boolean isAjaxRequest(HttpServletRequest request) {
-		String requestedWith = request.getHeader("X-Requested-With");
-		return requestedWith != null ? "XMLHttpRequest".equals(requestedWith) : false;
 	}
 }

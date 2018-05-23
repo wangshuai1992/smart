@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.smart</groupId>
 	<artifactId>smart</artifactId>
-	<version>1.1.2</version>
+	<version>1.2.2</version>
 	<packaging>pom</packaging>
 	<name>${project.artifactId}</name>
 	
@@ -12,8 +12,6 @@
 		<module>smart-mvc</module>
 		<!-- 单点登录权限系统 -->
 		<module>smart-sso</module>
-		<!-- 前端公用脚本和样式  -->
-		<module>smart-static</module>
 	</modules>
 	
 	<profiles>
@@ -52,10 +50,8 @@
 		<spring-redis.version>1.2.2.RELEASE</spring-redis.version>
 		<aspectj.version>1.8.9</aspectj.version>
 		<jta.version>1.1</jta.version>
-		<quartz.version>2.2.1</quartz.version>
 		<mybatis.version>3.3.0</mybatis.version>
 		<mybatis-spring.version>1.2.3</mybatis-spring.version>
-		<freemarker.version>2.3.23</freemarker.version>
 		<druid.version>1.0.15</druid.version>
 		<mysql.version>5.1.36</mysql.version>
 		<fastjson.version>1.2.29</fastjson.version>
@@ -133,13 +129,6 @@
 				<version>${jxl.version}</version>
 			</dependency>
 			
-			<!-- Freemarker模板引擎 -->
-			<dependency>
-				<groupId>org.freemarker</groupId>
-				<artifactId>freemarker</artifactId>
-				<version>${freemarker.version}</version>
-			</dependency>
-			
 			<!-- Spring -->
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -149,6 +138,11 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-beans</artifactId>
+				<version>${spring.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-web</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
 			<dependency>
@@ -291,13 +285,6 @@
 				<version>${jsp-api.version}</version>
 			</dependency>
 			
-			<!-- Quartz定时任务 -->
-			<dependency>
-				<groupId>org.quartz-scheduler</groupId>
-				<artifactId>quartz</artifactId>
-				<version>${quartz.version}</version>
-			</dependency>
-			
 			<!-- ActiveMQ -->
 			<dependency>
 				<groupId>org.apache.activemq</groupId>
@@ -422,7 +409,6 @@
 				<artifactId>jetty-maven-plugin</artifactId>
 				<version>9.4.2.v20170220</version>
 				<configuration>
-					<scanIntervalSeconds>3</scanIntervalSeconds>
 					<webApp>
 						<contextPath>/${project.artifactId}</contextPath>
 					</webApp>

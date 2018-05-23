@@ -18,13 +18,15 @@ public class ConfigServlet extends HttpServlet {
 
 	private static final long serialVersionUID = -7462526216386306510L;
 	
-	private static final Logger LOGGER = LoggerFactory.getLogger(ConfigServlet.class);
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public void init() throws ServletException {
 		ServletContext servletContext = getServletContext();
 		servletContext.setAttribute("_path", servletContext.getContextPath());
 		try {
-			servletContext.setAttribute("_staticPath", ConfigUtils.getProperty("static.url"));
+			String staticPath = ConfigUtils.getProperty("static.url");
+			servletContext.setAttribute("_staticPath", staticPath != null && staticPath.startsWith("http") ? staticPath
+					: servletContext.getContextPath() + staticPath);
 			servletContext.setAttribute("_systemName", ConfigUtils.getProperty("system.name"));
 			servletContext.setAttribute("_systemAdminName", ConfigUtils.getProperty("system.admin.name"));
 			servletContext.setAttribute("_companyName", ConfigUtils.getProperty("system.company.name"));
@@ -32,7 +34,7 @@ public class ConfigServlet extends HttpServlet {
 			servletContext.setAttribute("_copyRight", ConfigUtils.getProperty("system.copy.right"));
 		}
 		catch (Exception e) {
-			LOGGER.error("系统初始化参数配置有误", e);
+			logger.error("系统初始化参数配置有误", e);
 		}
 	}
 }

@@ -8,7 +8,7 @@ import com.smart.mvc.service.mybatis.Service;
 import com.smart.sso.server.model.User;
 
 /**
- * 管理员服务接口
+ * 用户服务接口
  * 
  * @author Joe
  */
@@ -17,22 +17,20 @@ public interface UserService extends Service<User, Integer> {
 	/**
 	 * 登录
 	 * 
-	 * @param appCode
-	 *            应用编码
 	 * @param account
 	 *            登录名
 	 * @param password
 	 *            密码
-	 * @return 管理员ID和应用编码集合Map
+	 * @return 用户ID和应用编码集合Map
 	 * @throws AuthenticationException
 	 *             认证异常
 	 */
-	public Result login(String ip, String appCode, String account, String password);
+	public Result login(String ip, String account, String password);
 	
 	/**
 	 * 启用禁用操作
 	 * @param isEnable 是否启用
-	 * @param idList 管理员ID集合
+	 * @param idList 用户ID集合
 	 * @return
 	 */
 	public void enable(Boolean isEnable, List<Integer> idList);
@@ -52,7 +50,7 @@ public interface UserService extends Service<User, Integer> {
 	 * @param pageSize 分页记录数
 	 * @return
 	 */
-	public Pagination<User> findPaginationByAccount(String account, Integer appId, Pagination<User> p);
+	public Pagination<User> findPaginationByAccount(String account, Pagination<User> p);
 	
 	/**
 	 * 根据登录名和应用ID查询
@@ -72,4 +70,7 @@ public interface UserService extends Service<User, Integer> {
 	 * @return
 	 */
 	public void updatePassword(Integer id, String newPassword);
+	
+	
+	public void save(User user, List<Integer> roleIdList);
 }
